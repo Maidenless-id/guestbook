@@ -6,12 +6,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        /* Estilos heredados del diseño retro para que encaje a la perfección */
         body {
             margin: 0;
             padding: 0;
             font-family: monospace;
-            background: #e5c3c8; /* El fondo rosado de tu app */
+            background: #e5c3c8;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -53,6 +52,7 @@
             font-size: 11px;
             background: #f7e1e3;
             color: #312224;
+            box-sizing: border-box;
         }
 
         button {
@@ -94,10 +94,9 @@
         const SUPABASE_URL = "https://fkjtbaqbtjdurbquhifv.supabase.co"; 
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZranRiYXFidGpkdXJicXVoaWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDgzMzEsImV4cCI6MjA5NzU4NDMzMX0.A9qv25yRHs80A9_dW7BRn3ey5WiPuylySMJbgSXTygM";
         
-        // Inicializar cliente correctamente
-        const supabaseClient = supabase.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Inicialización corregida usando window.supabase de forma global
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Cargar comentarios
         async function fetchComments() {
             const container = document.getElementById('comments-container');
             
@@ -108,7 +107,7 @@
                 .limit(50);
 
             if (error) {
-                container.innerHTML = `<div style="color:red; font-size:11px; text-align:center;">Error de conexión.</div>`;
+                container.innerHTML = `<div style="color:red; font-size:11px; text-align:center;">Error al cargar comentarios: ${error.message}</div>`;
                 return;
             }
 
@@ -140,7 +139,6 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Enviar comentario
         async function postComment() {
             const nameInput = document.getElementById('comment-name');
             const avatarInput = document.getElementById('comment-avatar');
@@ -171,7 +169,7 @@
             return str.replace(/[&<>'\"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
         }
 
-        // Suscribirse a cambios en tiempo real
+        // Eventos en tiempo real
         supabaseClient
             .channel('schema-db-changes')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comentarios' }, payload => { fetchComments(); })

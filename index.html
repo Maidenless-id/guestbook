@@ -97,6 +97,19 @@
         // Inicialización corregida usando window.supabase de forma global
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // --- CARGAR DATOS PREVIOS DESDE STORAGE ---
+        function cargarDatosGuardados() {
+            const nombreGuardado = localStorage.getItem('guestbook_nombre');
+            const avatarGuardado = localStorage.getItem('guestbook_avatar');
+
+            if (nombreGuardado) {
+                document.getElementById('comment-name').value = nombreGuardado;
+            }
+            if (avatarGuardado) {
+                document.getElementById('comment-avatar').value = avatarGuardado;
+            }
+        }
+
         async function fetchComments() {
             const container = document.getElementById('comments-container');
             
@@ -160,6 +173,10 @@
             if (error) {
                 alert("Error al enviar: " + error.message);
             } else {
+                // 💾 Si se envió correctamente, guardamos el perfil localmente
+                localStorage.setItem('guestbook_nombre', nombre);
+                localStorage.setItem('guestbook_avatar', avatar);
+
                 textInput.value = '';
                 fetchComments();
             }
@@ -176,6 +193,7 @@
             .subscribe();
 
         window.addEventListener('DOMContentLoaded', () => {
+            cargarDatosGuardados(); // Rellena automáticamente los campos guardados
             fetchComments();
         });
     </script>

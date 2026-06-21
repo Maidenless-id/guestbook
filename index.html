@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Guestbook Backend</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* Estilos heredados del diseño retro para que encaje a la perfección */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: monospace;
+            background: #e5c3c8; /* El fondo rosado de tu app */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        #comments-container {
+            flex-grow: 1;
+            background: white;
+            border: 2px solid #5a4548;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.1);
+            margin: 5px;
+        }
+
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #e5c3c8;
+            padding: 8px;
+            border: 2px solid #5a4548;
+            margin: 0 5px 5px 5px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        input[type="text"] {
+            border: 2px solid #5a4548;
+            padding: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            background: #f7e1e3;
+            color: #312224;
+        }
+
+        button {
+            background: #5a4548;
+            color: #f7e1e3;
+            border: 2px solid #312224;
+            padding: 0 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            box-shadow: 1px 1px 0px #312224;
+        }
+
+        button:active {
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="comments-container">
+        <div style="color: #bf9ba0; text-align: center; font-size: 11px; margin-top: 20px;">Conectando con el libro de visitas...</div>
+    </div>
+
+    <div class="form-container">
+        <div class="input-row">
+            <input type="text" id="comment-name" placeholder="Tu Nombre" style="width: 35%;" maxlength="20" />
+            <input type="text" id="comment-avatar" placeholder="URL de tu Avatar (opcional)" style="width: 65%;" />
+        </div>
+        <div class="input-row">
+            <input type="text" id="comment-text" placeholder="Escribe un mensaje..." style="flex-grow: 1;" maxlength="200" />
+            <button onclick="postComment()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DE SUPABASE ---
+        const SUPABASE_URL = "https://fkjtbaqbtjdurbquhifv.supabase.co"; 
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZranRiYXFidGpkdXJicXVoaWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MDMzMX0.A9qv25yRHs80A9_dW7BRn3ey5WiPuylySMJbgSXTygM";
+        
+        // Inicializar cliente correctamente
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Cargar comentarios
+        async function fetchComments() {
+            const container = document.getElementById('comments-container');
+            
+            const { data, error } = await supabaseClient
+                .from('comentarios')
+                .select('*')
+                .order('created_at', { ascending: true })
+                .limit(50);
+
+            if (error) {
+                container.innerHTML = `<div style="color:red; font-size:11px; text-align:center;">Error de conexión.</div>`;
+                return;
+            }
+
+            if (data.length === 0) {
+                container.innerHTML = `<div style="color:#5a4548; font-size:11px; text-align:center; margin-top:20px;">¡Nadie ha firmado el libro aún! Sé el primero. ✨</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            data.forEach(c => {
+                const avatarUrl = c.avatar && c.avatar.trim() !== "" ? c.avatar : "https://win98icons.alexmeub.com/icons/png/user_computer-1.png";
+                
+                const card = document.createElement('div');
+                card.style.display = 'flex';
+                card.style.gap = '10px';
+                card.style.borderBottom = '1px dotted #bf9ba0';
+                card.style.paddingBottom = '8px';
+                
+                card.innerHTML = `
+                    <img src="${avatarUrl}" style="width: 32px; height: 32px; border: 1px solid #5a4548; background: #f7e1e3; object-fit: cover;" onerror="this.src='https://win98icons.alexmeub.com/icons/png/user_computer-1.png'" />
+                    <div style="flex-grow: 1;">
+                        <strong style="color: #5a4548; font-size: 11px;">${escapeHTML(c.nombre)}</strong>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: #312224; word-break: break-word;">${escapeHTML(c.mensaje)}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Enviar comentario
+        async function postComment() {
+            const nameInput = document.getElementById('comment-name');
+            const avatarInput = document.getElementById('comment-avatar');
+            const textInput = document.getElementById('comment-text');
+
+            const nombre = nameInput.value.trim() || "Anónimo";
+            const mensaje = textInput.value.trim();
+            const avatar = avatarInput.value.trim();
+
+            if (!mensaje) {
+                alert("¡No puedes enviar un mensaje vacío!");
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('comentarios')
+                .insert([{ nombre, mensaje, avatar }]);
+
+            if (error) {
+                alert("Error al enviar: " + error.message);
+            } else {
+                textInput.value = '';
+                fetchComments();
+            }
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'\"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+
+        // Suscribirse a cambios en tiempo real
+        supabaseClient
+            .channel('schema-db-changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comentarios' }, payload => { fetchComments(); })
+            .subscribe();
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchComments();
+        });
+    </script>
+</body>
+</html>
